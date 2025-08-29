@@ -179,7 +179,7 @@ export const UserConfigSchema = z
         agent: z
           .object({
             enabled: z.boolean().default(true),
-            default_model: z.string().default("openai/gpt-4o"),
+            default_model: z.string().default("google/gemini-2.0-flash-exp"),
             custom_model: z.string().optional(),
             auto_execute: z.boolean().default(false),
             require_approval: z.boolean().default(true),
@@ -226,7 +226,7 @@ export const UserConfigSchema = z
       models: {},
       agent: {
         enabled: true,
-        default_model: "openai/gpt-4o",
+        default_model: "google/gemini-2.0-flash-exp",
         auto_execute: false,
         require_approval: true,
         max_steps: 10,

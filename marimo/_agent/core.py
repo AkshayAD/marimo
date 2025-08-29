@@ -62,8 +62,8 @@ class AgentCore:
         if self._model:
             return self._model
             
-        # Import based on config
-        model_name = self.config.default_model
+        # Use custom model if set, otherwise default
+        model_name = self.config.active_model
         
         if model_name.startswith("openai/"):
             from marimo._ai.llm import openai
@@ -77,7 +77,18 @@ class AgentCore:
             
         elif model_name.startswith("google/"):
             from marimo._ai.llm import google
+            # Map model names to actual Google AI model IDs
             model = model_name.replace("google/", "")
+            # Handle special model name mappings
+            model_mapping = {
+                "gemini-2.0-flash-exp": "gemini-2.0-flash-exp",
+                "gemini-2.0-flash-thinking-exp": "gemini-2.0-flash-thinking-exp-1219",
+                "gemini-exp-1206": "gemini-exp-1206",
+                "gemini-1.5-pro-002": "gemini-1.5-pro-002",
+                "gemini-1.5-flash-002": "gemini-1.5-flash-002",
+                "gemini-1.5-flash-8b": "gemini-1.5-flash-8b-latest",
+            }
+            model = model_mapping.get(model, model)
             return google(model=model)
             
         elif model_name.startswith("bedrock/"):
@@ -86,7 +97,10 @@ class AgentCore:
             return bedrock(model=model)
             
         else:
-            raise ValueError(f"Unknown model provider: {model_name}")
+            # Try as custom model with default provider
+            # Default to Google for unknown models
+            from marimo._ai.llm import google
+            return google(model=model_name)
     
     async def process_request(
         self,

@@ -90,7 +90,7 @@ interface AgentState {
 
 const DEFAULT_CONFIG: AgentConfig = {
   enabled: true,
-  defaultModel: "openai/gpt-4o",
+  defaultModel: "google/gemini-2.0-flash-exp",
   customModel: null,
   autoExecute: false,
   requireApproval: true,

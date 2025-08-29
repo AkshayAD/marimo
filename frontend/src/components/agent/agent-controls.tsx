@@ -23,32 +23,29 @@ import {
 } from "@/components/ui/popover";
 
 const AVAILABLE_MODELS = [
-  // OpenAI Models (Dec 2024)
-  { value: "openai/gpt-4o", label: "GPT-4o (Latest)" },
-  { value: "openai/gpt-4o-mini", label: "GPT-4o Mini" },
-  { value: "openai/gpt-4-turbo-2024-04-09", label: "GPT-4 Turbo" },
-  { value: "openai/gpt-4-1106-preview", label: "GPT-4 (Nov 2023)" },
-  { value: "openai/gpt-3.5-turbo-0125", label: "GPT-3.5 Turbo" },
-  { value: "openai/o1-preview", label: "o1 Preview (Reasoning)" },
-  { value: "openai/o1-mini", label: "o1 Mini" },
-  
-  // Anthropic Models (Dec 2024)
-  { value: "anthropic/claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet (Latest)" },
-  { value: "anthropic/claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
-  { value: "anthropic/claude-3-opus-20240229", label: "Claude 3 Opus" },
-  { value: "anthropic/claude-3-sonnet-20240229", label: "Claude 3 Sonnet" },
-  { value: "anthropic/claude-3-haiku-20240307", label: "Claude 3 Haiku" },
-  
-  // Google Models (Dec 2024)
-  { value: "google/gemini-2.0-flash-exp", label: "Gemini 2.0 Flash (Experimental)" },
+  // Google Gemini Models (Primary - Dec 2024)
+  { value: "google/gemini-2.0-flash-exp", label: "Gemini 2.0 Flash (Default)" },
+  { value: "google/gemini-2.0-flash-thinking-exp", label: "Gemini 2.0 Flash Thinking" },
+  { value: "google/gemini-exp-1206", label: "Gemini Experimental 1206" },
   { value: "google/gemini-1.5-pro-002", label: "Gemini 1.5 Pro" },
   { value: "google/gemini-1.5-flash-002", label: "Gemini 1.5 Flash" },
   { value: "google/gemini-1.5-flash-8b", label: "Gemini 1.5 Flash 8B" },
   
+  // OpenAI Models
+  { value: "openai/gpt-4o", label: "GPT-4o" },
+  { value: "openai/gpt-4o-mini", label: "GPT-4o Mini" },
+  { value: "openai/gpt-4-turbo-2024-04-09", label: "GPT-4 Turbo" },
+  { value: "openai/o1-preview", label: "o1 Preview" },
+  { value: "openai/o1-mini", label: "o1 Mini" },
+  
+  // Anthropic Models
+  { value: "anthropic/claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+  { value: "anthropic/claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
+  { value: "anthropic/claude-3-opus-20240229", label: "Claude 3 Opus" },
+  
   // AWS Bedrock Models
-  { value: "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0", label: "Bedrock Claude 3.5 Sonnet" },
-  { value: "bedrock/anthropic.claude-3-opus-20240229-v1:0", label: "Bedrock Claude 3 Opus" },
-  { value: "bedrock/meta.llama3-1-405b-instruct-v1:0", label: "Bedrock Llama 3.1 405B" },
+  { value: "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0", label: "Bedrock Claude 3.5" },
+  { value: "bedrock/meta.llama3-1-405b-instruct-v1:0", label: "Bedrock Llama 3.1" },
   
   // Custom option
   { value: "custom", label: "Custom Model..." },

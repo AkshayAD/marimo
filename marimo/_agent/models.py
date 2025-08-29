@@ -101,7 +101,7 @@ class AgentResponse:
 class AgentConfig:
     """Configuration for the agent."""
     enabled: bool = True
-    default_model: str = "openai/gpt-4o"
+    default_model: str = "google/gemini-2.0-flash-exp"
     custom_model: Optional[str] = None  # Allow custom model override
     auto_execute: bool = False
     max_steps: int = 10

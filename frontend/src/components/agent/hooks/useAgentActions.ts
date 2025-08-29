@@ -2,35 +2,35 @@
 import { useCallback } from "react";
 import type { CodeSuggestion } from "../stores/agent-state";
 import { useAgentWebSocket } from "./useAgentWebSocket";
-// import { createCell, updateCellCode, deleteCell } from "@/core/cells/cells";
-// import { sendRun } from "@/core/network/requests";
-// import { CellId } from "@/core/cells/ids";
+import { useCellActions } from "@/core/cells/cells";
+import { useRequestClient } from "@/core/network/requests";
+import { CellId } from "@/core/cells/ids";
 
 export const useAgentActions = () => {
   const { executeSuggestion } = useAgentWebSocket();
+  const actions = useCellActions();
+  const client = useRequestClient();
 
   const applySuggestion = useCallback(
     async (suggestion: CodeSuggestion) => {
-      // TODO: Implement actual cell operations when cell APIs are available
-      console.log("Applying suggestion:", suggestion);
       
-      // For now, just return a dummy cell ID
-      return "dummy-cell-id";
-      
-      // Original implementation commented out until APIs are available:
-      /*
+      // Implement actual cell operations
       switch (suggestion.type) {
         case "new_cell": {
           // Create new cell
-          const cellId = createCell({
+          const position = suggestion.cellId ? 
+            (suggestion.position === "before" ? "before" : "after") : 
+            "last";
+          
+          const cellId = actions.createNewCell({
+            cellId: suggestion.cellId || "__end__",
+            before: position === "before",
             code: suggestion.code,
-            before: suggestion.position === "before" ? suggestion.cellId : undefined,
-            after: suggestion.position === "after" ? suggestion.cellId : undefined,
           });
           
           // Execute if auto-execute is enabled
           if (suggestion.autoExecute && cellId) {
-            await sendRun([cellId]);
+            await client.sendRun({ cellIds: [cellId], codes: [] });
           }
           
           return cellId;
@@ -42,14 +42,15 @@ export const useAgentActions = () => {
           }
           
           // Update cell code
-          updateCellCode({
+          actions.updateCellCode({
             cellId: suggestion.cellId as CellId,
             code: suggestion.code,
+            formattingChange: false,
           });
           
           // Execute if auto-execute is enabled
           if (suggestion.autoExecute) {
-            await sendRun([suggestion.cellId as CellId]);
+            await client.sendRun({ cellIds: [suggestion.cellId as CellId], codes: [] });
           }
           
           return suggestion.cellId;
@@ -61,7 +62,7 @@ export const useAgentActions = () => {
           }
           
           // Delete cell
-          deleteCell(suggestion.cellId as CellId);
+          actions.deleteCell({ cellId: suggestion.cellId as CellId });
           
           return suggestion.cellId;
         }
@@ -72,7 +73,7 @@ export const useAgentActions = () => {
           }
           
           // Execute cell
-          await sendRun([suggestion.cellId as CellId]);
+          await client.sendRun({ cellIds: [suggestion.cellId as CellId], codes: [] });
           
           return suggestion.cellId;
         }
@@ -80,9 +81,8 @@ export const useAgentActions = () => {
         default:
           throw new Error(`Unknown suggestion type: ${suggestion.type}`);
       }
-      */
     },
-    []
+    [actions, client]
   );
 
   const executeRemoteSuggestion = useCallback(
