@@ -5,6 +5,7 @@ import { KnownQueryParams } from "@/core/constants";
 import { EditApp } from "@/core/edit-app";
 import { AppChrome } from "../editor/chrome/wrapper/app-chrome";
 import { CommandPalette } from "../editor/controls/command-palette";
+import { AgentPanel } from "../agent/agent-panel";
 
 interface Props {
   userConfig: UserConfig;
@@ -17,11 +18,14 @@ const hideChrome = (() => {
 })();
 
 const EditPage = (props: Props) => {
+  const showAgent = props.userConfig.ai?.agent?.enabled !== false;
+
   if (hideChrome) {
     return (
       <>
         <EditApp hideControls={true} {...props} />
         <CommandPalette />
+        {showAgent && <AgentPanel />}
       </>
     );
   }
@@ -30,6 +34,7 @@ const EditPage = (props: Props) => {
     <AppChrome>
       <EditApp {...props} />
       <CommandPalette />
+      {showAgent && <AgentPanel />}
     </AppChrome>
   );
 };

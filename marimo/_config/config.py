@@ -254,6 +254,28 @@ class AiModelConfig(TypedDict):
 
 
 @dataclass
+class AgentConfig(TypedDict):
+    """Configuration options for the AI Agent.
+
+    **Keys.**
+
+    - `enabled`: whether the agent is enabled
+    - `default_model`: the default model to use for agent interactions
+    - `auto_execute`: whether to automatically execute generated code
+    - `require_approval`: whether to require user approval before executing
+    - `max_steps`: maximum number of steps in an execution plan
+    - `stream_responses`: whether to stream LLM responses
+    """
+
+    enabled: bool
+    default_model: str
+    auto_execute: bool
+    require_approval: bool
+    max_steps: int
+    stream_responses: bool
+
+
+@dataclass
 class AiConfig(TypedDict, total=False):
     """Configuration options for AI.
 
@@ -263,6 +285,7 @@ class AiConfig(TypedDict, total=False):
     - `max_tokens`: the maximum number of tokens to use in AI completions
     - `mode`: the mode to use for AI completions. Can be one of: `"ask"` or `"manual"`
     - `models`: the models to use for AI completions
+    - `agent`: the agent configuration
     - `open_ai`: the OpenAI config
     - `anthropic`: the Anthropic config
     - `google`: the Google AI config
@@ -277,6 +300,7 @@ class AiConfig(TypedDict, total=False):
     max_tokens: NotRequired[int]
     mode: NotRequired[CopilotMode]
     models: AiModelConfig
+    agent: AgentConfig
 
     # providers
     open_ai: OpenAiConfig
@@ -666,6 +690,14 @@ DEFAULT_CONFIG: MarimoConfig = {
         "models": {
             "displayed_models": [],
             "custom_models": [],
+        },
+        "agent": {
+            "enabled": True,
+            "default_model": "openai/gpt-4",
+            "auto_execute": False,
+            "require_approval": True,
+            "max_steps": 10,
+            "stream_responses": True,
         }
     },
     "snippets": {

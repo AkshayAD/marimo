@@ -757,3 +757,39 @@ MessageOperation = Union[
     UpdateCellCodes,
     UpdateCellIdsRequest,
 ]
+
+
+# Agent-related operations
+@dataclass
+class AgentMessageOp(Op):
+    """Message from the agent system."""
+    name: ClassVar[str] = "agent-message"
+    message: str
+    role: Literal["user", "assistant", "system"]
+    suggestions: Optional[list[dict]] = None
+    timestamp: float = field(default_factory=lambda: time.time())
+
+
+@dataclass
+class AgentSuggestionOp(Op):
+    """Code suggestion from the agent."""
+    name: ClassVar[str] = "agent-suggestion"
+    suggestion_id: str
+    type: Literal["new_cell", "modify_cell", "delete_cell", "execute_cell"]
+    code: str
+    cell_id: Optional[CellId_t] = None
+    position: Literal["before", "after", "replace"] = "after"
+    description: Optional[str] = None
+    auto_execute: bool = False
+
+
+@dataclass
+class AgentExecutionOp(Op):
+    """Agent execution status update."""
+    name: ClassVar[str] = "agent-execution"
+    step_id: str
+    description: str
+    status: Literal["pending", "executing", "complete", "error", "cancelled"]
+    progress: float = 0.0  # 0.0 to 1.0
+    result: Optional[dict] = None
+    error: Optional[str] = None

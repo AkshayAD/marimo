@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from marimo._server.api.endpoints.agent import router as agent_router
 from marimo._server.api.endpoints.ai import router as ai_router
 from marimo._server.api.endpoints.assets import router as assets_router
 from marimo._server.api.endpoints.config import router as config_router
@@ -58,6 +59,7 @@ def build_routes(base_url: str = "") -> list[BaseRoute]:
         datasources_router, prefix="/api/datasources", name="datasources"
     )
     app_router.include_router(ai_router, prefix="/api/ai", name="ai")
+    app_router.include_router(agent_router, prefix="/api/agent", name="agent")
     app_router.include_router(home_router, prefix="/api/home", name="home")
     app_router.include_router(login_router, prefix="/auth", name="auth")
     app_router.include_router(
