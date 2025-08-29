@@ -83,9 +83,13 @@ class AgentCore:
             base_url = os.getenv("ANTHROPIC_BASE_URL")
             return anthropic(model=model, api_key=api_key, base_url=base_url)
             
-        elif model_name.startswith("google/"):
+        elif model_name.startswith("google/") or model_name.startswith("gemini/"):
             from marimo._ai.llm import google
-            model = model_name.replace("google/", "")
+            # Handle both google/ and gemini/ prefixes
+            if model_name.startswith("google/"):
+                model = model_name.replace("google/", "")
+            else:
+                model = model_name.replace("gemini/", "")
             api_key = os.getenv("GOOGLE_AI_API_KEY")
             return google(model=model, api_key=api_key)
             
@@ -471,6 +475,9 @@ class AgentCore:
         # Get model information for streaming
         model_name = self.config.active_model
         provider = model_name.split("/")[0]
+        # Normalize gemini to google for provider lookup
+        if provider == "gemini":
+            provider = "google"
         model = model_name.split("/", 1)[1] if "/" in model_name else model_name
         
         if provider not in STREAMING_PROVIDERS:
@@ -528,6 +535,7 @@ class AgentCore:
             "openai": "OPENAI_API_KEY",
             "anthropic": "ANTHROPIC_API_KEY", 
             "google": "GOOGLE_AI_API_KEY",
+            "gemini": "GOOGLE_AI_API_KEY",  # Alias for Google
             "groq": "GROQ_API_KEY",
         }
         

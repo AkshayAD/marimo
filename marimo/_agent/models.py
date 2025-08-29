@@ -101,7 +101,7 @@ class AgentResponse:
 class AgentConfig:
     """Configuration for the agent."""
     enabled: bool = True
-    default_model: str = "openai/gpt-4o"
+    default_model: str = "google/gemini-2.5-flash"  # Updated to Gemini 2.5 Flash
     custom_model: Optional[str] = None  # Allow custom model override
     auto_execute: bool = False
     max_steps: int = 10
@@ -110,6 +110,9 @@ class AgentConfig:
     max_context_cells: int = 20
     temperature: float = 0.7
     max_tokens: int = 4096
+    # Gemini 2.5 specific settings
+    enable_deep_think: bool = False  # Enable Deep Think for Gemini 2.5 Pro
+    thinking_budget: int = 0  # Token budget for thinking (0 = automatic)
     
     @property
     def active_model(self) -> str:

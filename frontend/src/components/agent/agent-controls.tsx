@@ -23,33 +23,38 @@ import {
 } from "@/components/ui/popover";
 
 const AVAILABLE_MODELS = [
-  // OpenAI Models (Dec 2024 - Verified)
+  // Google Gemini 2.5 Models (Latest - 2025)
+  { value: "google/gemini-2.5-flash", label: "⭐ Gemini 2.5 Flash (Best Value)" },
+  { value: "google/gemini-2.5-pro", label: "🧠 Gemini 2.5 Pro (Deep Think)" },
+  { value: "google/gemini-2.5-flash-image", label: "🎨 Gemini 2.5 Flash Image" },
+  
+  // Google Gemini 2.0 Models
+  { value: "google/gemini-2.0-flash-exp", label: "Gemini 2.0 Flash Experimental" },
+  { value: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash v1" },
+  
+  // Google Gemini 1.5 Models (Stable)
+  { value: "google/gemini-1.5-flash", label: "Gemini 1.5 Flash (Stable)" },
+  { value: "google/gemini-1.5-flash-002", label: "Gemini 1.5 Flash Latest" },
+  { value: "google/gemini-1.5-flash-8b", label: "Gemini 1.5 Flash 8B (Lite)" },
+  { value: "google/gemini-1.5-pro", label: "Gemini 1.5 Pro (Advanced)" },
+  { value: "google/gemini-1.5-pro-002", label: "Gemini 1.5 Pro Latest" },
+  { value: "google/gemini-1.0-pro", label: "Gemini 1.0 Pro (Legacy)" },
+  
+  // OpenAI Models (Dec 2024)
   { value: "openai/gpt-4o", label: "GPT-4o (Multimodal)" },
   { value: "openai/gpt-4o-2024-11-20", label: "GPT-4o Latest" },
   { value: "openai/gpt-4o-mini", label: "GPT-4o Mini (Fast)" },
-  { value: "openai/gpt-4o-mini-2024-07-18", label: "GPT-4o Mini Latest" },
   { value: "openai/gpt-4-turbo", label: "GPT-4 Turbo" },
-  { value: "openai/gpt-4-turbo-2024-04-09", label: "GPT-4 Turbo April" },
   { value: "openai/gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
-  { value: "openai/gpt-3.5-turbo-0125", label: "GPT-3.5 Latest" },
-  // O1 reasoning models - Limited availability
   { value: "openai/o1-preview", label: "O1 Preview (Reasoning)" },
   { value: "openai/o1-mini", label: "O1 Mini (Reasoning)" },
   
-  // Anthropic Models (Dec 2024 - Confirmed)
+  // Anthropic Models (Dec 2024)
   { value: "anthropic/claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet v2" },
   { value: "anthropic/claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
   { value: "anthropic/claude-3-opus-20240229", label: "Claude 3 Opus" },
   { value: "anthropic/claude-3-sonnet-20240229", label: "Claude 3 Sonnet" },
   { value: "anthropic/claude-3-haiku-20240307", label: "Claude 3 Haiku" },
-  
-  // Google Models (Dec 2024 - Gemini 2.0)
-  { value: "google/gemini-2.0-flash-exp", label: "Gemini 2.0 Flash (Exp)" },
-  { value: "google/gemini-1.5-pro", label: "Gemini 1.5 Pro" },
-  { value: "google/gemini-1.5-pro-002", label: "Gemini 1.5 Pro Latest" },
-  { value: "google/gemini-1.5-flash", label: "Gemini 1.5 Flash" },
-  { value: "google/gemini-1.5-flash-002", label: "Gemini 1.5 Flash Latest" },
-  { value: "google/gemini-1.5-flash-8b", label: "Gemini 1.5 Flash 8B" },
   
   // Groq Models (Fast Inference)
   { value: "groq/llama-3.3-70b-versatile", label: "Llama 3.3 70B" },
@@ -235,6 +240,52 @@ export const AgentControls: React.FC = () => {
                 Stream Responses
               </Label>
             </div>
+
+            {/* Gemini 2.5 Deep Think Mode (only for Gemini 2.5 Pro) */}
+            {(config.defaultModel === "google/gemini-2.5-pro" || 
+              config.customModel?.includes("gemini-2.5-pro")) && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="deep-think"
+                    checked={config.enableDeepThink || false}
+                    onCheckedChange={(checked) =>
+                      updateConfig({ enableDeepThink: checked })
+                    }
+                  />
+                  <Label htmlFor="deep-think" className="text-xs">
+                    🧠 Deep Think Mode (Enhanced Reasoning)
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enables multi-hypothesis reasoning for complex problems
+                </p>
+              </div>
+            )}
+
+            {/* Thinking Budget for Gemini 2.5 */}
+            {(config.defaultModel?.includes("gemini-2.5") || 
+              config.customModel?.includes("gemini-2.5")) && (
+              <div className="space-y-2">
+                <Label htmlFor="thinking-budget" className="text-xs">
+                  Thinking Budget (tokens)
+                </Label>
+                <input
+                  id="thinking-budget"
+                  type="number"
+                  min="0"
+                  max="10000"
+                  value={config.thinkingBudget || 0}
+                  onChange={(e) =>
+                    updateConfig({ thinkingBudget: parseInt(e.target.value) || 0 })
+                  }
+                  className="w-full h-8 px-2 border rounded text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Control thinking cost (0 = automatic). Higher = better reasoning
+                </p>
+              </div>
+            )}
 
             {/* Enable/Disable Agent */}
             <div className="flex items-center gap-2">

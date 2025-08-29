@@ -182,9 +182,24 @@ export const useAgentWebSocket = () => {
       }
 
       // Get current notebook context
-      const cells: any[] = []; // getCellsAsJSON();
-      // const notebook = getNotebook();
-      const activeCellId = null; // notebook.activeCell;
+      // TODO: Import these functions from core when available
+      // For now, we'll try to get them if they exist
+      let cells: any[] = [];
+      let activeCellId = null;
+      
+      try {
+        // Try to access cells from window or global context
+        // This would need to be properly imported from @/core/cells/cells
+        if (typeof window !== 'undefined' && (window as any).marimoGetCells) {
+          cells = (window as any).marimoGetCells();
+        }
+        if (typeof window !== 'undefined' && (window as any).marimoGetActiveCell) {
+          activeCellId = (window as any).marimoGetActiveCell();
+        }
+      } catch (e) {
+        // Context not available yet
+        console.debug("Notebook context not available");
+      }
       
       // Get active model (custom if set, otherwise default)
       const config = useAgentStore.getState().config;

@@ -47,6 +47,9 @@ export interface AgentConfig {
   maxTokens: number;
   temperature: number;
   safetyMode: "strict" | "balanced" | "permissive";
+  // Gemini 2.5 specific settings
+  enableDeepThink?: boolean;  // Enable Deep Think mode for Gemini 2.5 Pro
+  thinkingBudget?: number;    // Token budget for thinking (0 = automatic)
 }
 
 interface AgentState {
@@ -105,7 +108,7 @@ interface AgentState {
 
 const DEFAULT_CONFIG: AgentConfig = {
   enabled: true,
-  defaultModel: "openai/gpt-4o",
+  defaultModel: "google/gemini-2.5-flash",  // Default to Gemini 2.5 Flash
   customModel: null,
   autoExecute: false,
   requireApproval: true,

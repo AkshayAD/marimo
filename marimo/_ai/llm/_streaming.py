@@ -125,71 +125,112 @@ async def stream_google(
     system_message: str,
     api_key: str,
 ) -> AsyncGenerator[str, None]:
-    """Stream Google AI chat completion responses."""
-    DependencyManager.google_ai.require(
-        "streaming requires google. `pip install google-genai`"
-    )
+    """Stream Google AI chat completion responses.
+    
+    Supports Gemini 2.5 models with Deep Think mode and thinking budgets.
+    """
+    # Try new google-genai SDK first (recommended for Gemini 2.0+)
     try:
         from google import genai
-    except ImportError:
-        # Fallback to google.generativeai for older installations
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-        except ImportError:
-            raise ImportError("Please install google-genai or google-generativeai")
-    
-    # WARNING: Google's streaming API is not fully async and may block
-    # This is a best-effort implementation that may need adjustment
-    try:
-        if hasattr(genai, 'Client'):
-            # New google-genai API
-            client = genai.Client(api_key=api_key)
-            google_messages = convert_to_google_messages(messages)
+        from google.genai import types
+        
+        # Initialize client with API key
+        client = genai.Client(api_key=api_key)
+        
+        # Convert messages to Google format
+        google_messages = convert_to_google_messages(messages)
+        
+        # Check for Deep Think mode (Gemini 2.5 Pro only)
+        enable_deep_think = (
+            "gemini-2.5-pro" in model.lower() and 
+            os.getenv("GEMINI_DEEP_THINK", "false").lower() == "true"
+        )
+        
+        # Get thinking budget from environment (for Gemini 2.5 Flash/Pro)
+        thinking_budget = None
+        if "gemini-2.5" in model.lower():
+            thinking_budget = int(os.getenv("GEMINI_THINKING_BUDGET", "0"))
+        
+        # Create config for generation
+        generation_config_dict = {
+            "temperature": config.temperature if config.temperature is not None else 0.7,
+            "top_p": config.top_p if config.top_p is not None else 0.95,
+            "top_k": config.top_k if config.top_k is not None else 40,
+            "max_output_tokens": config.max_tokens if config.max_tokens else 2048,
+            "system_instruction": system_message if system_message else None,
+        }
+        
+        # Add Deep Think mode if enabled
+        if enable_deep_think:
+            generation_config_dict["reasoning_mode"] = "deep_think"
             
-            # The actual method name might differ - this is an educated guess
-            # Google's API documentation should be consulted for the exact method
+        # Add thinking budget if specified
+        if thinking_budget and thinking_budget > 0:
+            generation_config_dict["thinking_budget_tokens"] = thinking_budget
+        
+        generation_config = types.GenerateContentConfig(**generation_config_dict)
+        
+        # Stream the response
+        try:
+            for chunk in client.models.generate_content_stream(
+                model=model,
+                contents=google_messages,
+                config=generation_config,
+            ):
+                if chunk.text:
+                    yield chunk.text
+        except Exception as e:
+            # If streaming fails, fallback to non-streaming
             response = client.models.generate_content(
                 model=model,
                 contents=google_messages,
-                config={
-                    "system_instruction": system_message,
-                    "max_output_tokens": config.max_tokens,
-                    "temperature": config.temperature,
-                    "top_p": config.top_p,
-                    "top_k": config.top_k,
-                },
-                stream=True,  # Enable streaming if supported
+                config=generation_config,
             )
-        else:
-            # Fallback for google.generativeai
+            if response.text:
+                yield response.text
+                
+    except ImportError:
+        # Fallback to older google-generativeai SDK
+        try:
+            import google.generativeai as genai
+            
+            # Configure with API key
+            genai.configure(api_key=api_key)
+            
+            # Create generation config
+            generation_config = {
+                "temperature": config.temperature if config.temperature is not None else 0.7,
+                "top_p": config.top_p if config.top_p is not None else 0.95,
+                "top_k": config.top_k if config.top_k is not None else 40,
+                "max_output_tokens": config.max_tokens if config.max_tokens else 2048,
+            }
+            
+            # Create model with system instruction
             model_obj = genai.GenerativeModel(
                 model_name=model,
-                system_instruction=system_message,
+                generation_config=generation_config,
+                system_instruction=system_message if system_message else None,
             )
+            
+            # Convert messages
             google_messages = convert_to_google_messages(messages)
-            response = model_obj.generate_content(
-                google_messages,
-                generation_config={
-                    "max_output_tokens": config.max_tokens,
-                    "temperature": config.temperature,
-                    "top_p": config.top_p,
-                    "top_k": config.top_k,
-                },
-                stream=True,
-            )
-        
-        # Iterate over streaming response
-        for chunk in response:
-            if hasattr(chunk, 'text') and chunk.text:
-                yield chunk.text
-            elif hasattr(chunk, 'parts'):
-                for part in chunk.parts:
-                    if hasattr(part, 'text') and part.text:
-                        yield part.text
-    except Exception as e:
-        # Log the error and yield an error message
-        yield f"[Error streaming from Google AI: {str(e)}]"
+            
+            # Stream the response
+            try:
+                response_stream = model_obj.generate_content_stream(google_messages)
+                for chunk in response_stream:
+                    if chunk.text:
+                        yield chunk.text
+            except Exception as e:
+                # Fallback to non-streaming
+                response = model_obj.generate_content(google_messages)
+                if response.text:
+                    yield response.text
+                    
+        except ImportError:
+            yield "[Error: Please install google-genai or google-generativeai package]"
+        except Exception as e:
+            yield f"[Error with Google Gemini: {str(e)}]"
 
 
 async def stream_groq(
@@ -232,5 +273,6 @@ STREAMING_PROVIDERS = {
     "openai": stream_openai,
     "anthropic": stream_anthropic,
     "google": stream_google,
+    "gemini": stream_google,  # Alias for Google Gemini
     "groq": stream_groq,
 }
