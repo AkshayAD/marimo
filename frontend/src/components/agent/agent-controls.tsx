@@ -23,34 +23,46 @@ import {
 } from "@/components/ui/popover";
 
 const AVAILABLE_MODELS = [
-  // OpenAI Models (Dec 2024)
-  { value: "openai/gpt-4o", label: "GPT-4o (Latest)" },
-  { value: "openai/gpt-4o-mini", label: "GPT-4o Mini" },
-  { value: "openai/gpt-4-turbo-2024-04-09", label: "GPT-4 Turbo" },
-  { value: "openai/gpt-4-1106-preview", label: "GPT-4 (Nov 2023)" },
-  { value: "openai/gpt-3.5-turbo-0125", label: "GPT-3.5 Turbo" },
-  { value: "openai/o1-preview", label: "o1 Preview (Reasoning)" },
-  { value: "openai/o1-mini", label: "o1 Mini" },
+  // OpenAI Models (Dec 2024 - Verified)
+  { value: "openai/gpt-4o", label: "GPT-4o (Multimodal)" },
+  { value: "openai/gpt-4o-2024-11-20", label: "GPT-4o Latest" },
+  { value: "openai/gpt-4o-mini", label: "GPT-4o Mini (Fast)" },
+  { value: "openai/gpt-4o-mini-2024-07-18", label: "GPT-4o Mini Latest" },
+  { value: "openai/gpt-4-turbo", label: "GPT-4 Turbo" },
+  { value: "openai/gpt-4-turbo-2024-04-09", label: "GPT-4 Turbo April" },
+  { value: "openai/gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+  { value: "openai/gpt-3.5-turbo-0125", label: "GPT-3.5 Latest" },
+  // O1 reasoning models - Limited availability
+  { value: "openai/o1-preview", label: "O1 Preview (Reasoning)" },
+  { value: "openai/o1-mini", label: "O1 Mini (Reasoning)" },
   
-  // Anthropic Models (Dec 2024)
-  { value: "anthropic/claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet (Latest)" },
+  // Anthropic Models (Dec 2024 - Confirmed)
+  { value: "anthropic/claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet v2" },
   { value: "anthropic/claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
   { value: "anthropic/claude-3-opus-20240229", label: "Claude 3 Opus" },
   { value: "anthropic/claude-3-sonnet-20240229", label: "Claude 3 Sonnet" },
   { value: "anthropic/claude-3-haiku-20240307", label: "Claude 3 Haiku" },
   
-  // Google Models (Dec 2024)
-  { value: "google/gemini-2.0-flash-exp", label: "Gemini 2.0 Flash (Experimental)" },
-  { value: "google/gemini-1.5-pro-002", label: "Gemini 1.5 Pro" },
-  { value: "google/gemini-1.5-flash-002", label: "Gemini 1.5 Flash" },
+  // Google Models (Dec 2024 - Gemini 2.0)
+  { value: "google/gemini-2.0-flash-exp", label: "Gemini 2.0 Flash (Exp)" },
+  { value: "google/gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+  { value: "google/gemini-1.5-pro-002", label: "Gemini 1.5 Pro Latest" },
+  { value: "google/gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+  { value: "google/gemini-1.5-flash-002", label: "Gemini 1.5 Flash Latest" },
   { value: "google/gemini-1.5-flash-8b", label: "Gemini 1.5 Flash 8B" },
   
-  // AWS Bedrock Models
-  { value: "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0", label: "Bedrock Claude 3.5 Sonnet" },
-  { value: "bedrock/anthropic.claude-3-opus-20240229-v1:0", label: "Bedrock Claude 3 Opus" },
-  { value: "bedrock/meta.llama3-1-405b-instruct-v1:0", label: "Bedrock Llama 3.1 405B" },
+  // Groq Models (Fast Inference)
+  { value: "groq/llama-3.3-70b-versatile", label: "Llama 3.3 70B" },
+  { value: "groq/llama-3.1-70b-versatile", label: "Llama 3.1 70B" },
+  { value: "groq/mixtral-8x7b-32768", label: "Mixtral 8x7B" },
+  { value: "groq/gemma2-9b-it", label: "Gemma 2 9B" },
   
-  // Custom option
+  // AWS Bedrock Models
+  { value: "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0", label: "Bedrock Claude 3.5" },
+  { value: "bedrock/anthropic.claude-3-opus-20240229-v1:0", label: "Bedrock Claude Opus" },
+  { value: "bedrock/meta.llama3-2-90b-instruct-v1:0", label: "Bedrock Llama 3.2" },
+  
+  // Custom option - Always last
   { value: "custom", label: "Custom Model..." },
 ];
 
@@ -146,20 +158,48 @@ export const AgentControls: React.FC = () => {
               {showCustomInput && (
                 <div className="space-y-2">
                   <Label htmlFor="custom-model" className="text-xs">
-                    Custom Model Name
+                    Custom Model Identifier
                   </Label>
                   <input
                     id="custom-model"
                     type="text"
-                    placeholder="e.g., openai/gpt-4o-2024-12-17"
+                    placeholder="provider/model-name"
                     value={customModelValue}
                     onChange={(e) => setCustomModelValue(e.target.value)}
-                    onBlur={() => updateConfig({ customModel: customModelValue })}
-                    className="w-full h-8 px-2 border rounded text-sm"
+                    onBlur={() => {
+                      if (customModelValue.trim()) {
+                        updateConfig({ customModel: customModelValue.trim() });
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customModelValue.trim()) {
+                        updateConfig({ customModel: customModelValue.trim() });
+                      }
+                    }}
+                    className="w-full h-8 px-2 border rounded text-sm font-mono"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Enter the exact model identifier for your provider
-                  </p>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>Format: <code>provider/model-name</code></p>
+                    <p>Examples:</p>
+                    <ul className="list-disc list-inside ml-2 space-y-0.5">
+                      <li><code>openai/gpt-4-1106-preview</code></li>
+                      <li><code>anthropic/claude-2.1</code></li>
+                      <li><code>ollama/llama2:70b</code></li>
+                      <li><code>custom/your-fine-tuned-model</code></li>
+                    </ul>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full h-7 text-xs"
+                    onClick={() => {
+                      setShowCustomInput(false);
+                      setCustomModelValue("");
+                      updateConfig({ customModel: null, defaultModel: "openai/gpt-4o" });
+                    }}
+                  >
+                    Back to Preset Models
+                  </Button>
                 </div>
               )}
             </div>
