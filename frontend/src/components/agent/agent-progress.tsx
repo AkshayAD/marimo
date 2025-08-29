@@ -12,11 +12,11 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+// import {
+//   Collapsible,
+//   CollapsibleContent,
+//   CollapsibleTrigger,
+// } from "@/components/ui/collapsible";
 
 export const AgentProgress: React.FC = () => {
   const { currentPlan, executingStepId } = useAgentStore();
@@ -50,27 +50,27 @@ export const AgentProgress: React.FC = () => {
 
   return (
     <div className="border-t bg-muted/20">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            className="w-full justify-between p-2 h-auto"
-          >
-            <div className="flex items-center gap-2">
-              {isOpen ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
-              )}
-              <span className="text-xs font-medium">
-                Execution Plan ({completedSteps}/{totalSteps})
-              </span>
-            </div>
-            <Progress value={progress} className="w-20 h-2" />
-          </Button>
-        </CollapsibleTrigger>
+      {/* Collapsible implementation simplified */}
+      <div>
+        <Button
+          variant="ghost"
+          className="w-full justify-between p-2 h-auto"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <div className="flex items-center gap-2">
+            {isOpen ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+            <span className="text-xs font-medium">
+              Execution Plan ({completedSteps}/{totalSteps})
+            </span>
+          </div>
+          <Progress value={progress} className="w-20 h-2" />
+        </Button>
         
-        <CollapsibleContent>
+        {isOpen && (
           <div className="px-2 pb-2 space-y-1">
             {currentPlan.map((step, index) => {
               const isExecuting = step.stepId === executingStepId;
@@ -120,8 +120,8 @@ export const AgentProgress: React.FC = () => {
               );
             })}
           </div>
-        </CollapsibleContent>
-      </Collapsible>
+        )}
+      </div>
     </div>
   );
 };

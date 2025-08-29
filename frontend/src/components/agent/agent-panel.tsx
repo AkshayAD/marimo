@@ -7,19 +7,17 @@ import { AgentControls } from "./agent-controls";
 import { AgentProgress } from "./agent-progress";
 import { Button } from "@/components/ui/button";
 import { 
-  ChevronRight, 
   ChevronLeft, 
   Bot, 
   Minimize2,
-  Maximize2,
   X
 } from "lucide-react";
-import { useResizable } from "@/hooks/useResizable";
+// import { useResizable } from "@/hooks/useResizable";
 import "./agent-panel.css";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 600;
-const DEFAULT_WIDTH = 400;
+// const DEFAULT_WIDTH = 400;
 
 export const AgentPanel: React.FC = () => {
   const {
@@ -30,7 +28,12 @@ export const AgentPanel: React.FC = () => {
     setWidth,
     toggleMinimized,
     wsConnected,
+    config,
   } = useAgentStore();
+  
+  // Get active model for display
+  const activeModel = config.customModel || config.defaultModel;
+  const modelDisplay = activeModel.split('/').pop()?.split('-').slice(0, 2).join('-') || 'Unknown';
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -114,7 +117,9 @@ export const AgentPanel: React.FC = () => {
             <div className="flex items-center gap-2">
               <Bot className="h-4 w-4" />
               <span className="font-semibold text-sm">AI Agent</span>
-              {!wsConnected && (
+              {wsConnected ? (
+                <span className="text-xs text-muted-foreground">({modelDisplay})</span>
+              ) : (
                 <span className="text-xs text-muted-foreground">(Offline)</span>
               )}
             </div>

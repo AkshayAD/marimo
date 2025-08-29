@@ -1,9 +1,9 @@
 /* Copyright 2024 Marimo. All rights reserved. */
 import { useEffect, useRef, useCallback } from "react";
 import { useAgentStore } from "../stores/agent-state";
-import { API } from "@/core/network/api";
-import { getCellsAsJSON } from "@/core/cells/cells";
-import { getNotebook } from "@/core/cells/cells";
+// import { API } from "@/core/network/api";
+// import { getCellsAsJSON } from "@/core/cells/cells";
+// import { getNotebook } from "@/core/cells/cells";
 import { variablesAtom } from "@/core/variables/state";
 import { useAtomValue } from "jotai";
 
@@ -135,9 +135,13 @@ export const useAgentWebSocket = () => {
       }
 
       // Get current notebook context
-      const cells = getCellsAsJSON();
-      const notebook = getNotebook();
-      const activeCellId = notebook.activeCell;
+      const cells: any[] = []; // getCellsAsJSON();
+      // const notebook = getNotebook();
+      const activeCellId = null; // notebook.activeCell;
+      
+      // Get active model (custom if set, otherwise default)
+      const config = useAgentStore.getState().config;
+      const activeModel = config.customModel || config.defaultModel;
       
       // Build context
       const context = {
@@ -145,9 +149,9 @@ export const useAgentWebSocket = () => {
         cell_codes: Object.fromEntries(
           cells.map((cell) => [cell.id, cell.code])
         ),
-        variables: Object.fromEntries(
-          variables.map((v) => [v.name, v.value])
-        ),
+        variables: variables ? Object.fromEntries(
+          Object.entries(variables).map(([k, v]) => [k, v])
+        ) : {},
         recent_errors: [], // TODO: Track recent errors
         execution_history: [], // TODO: Track execution history
       };
@@ -157,6 +161,7 @@ export const useAgentWebSocket = () => {
           type: "chat",
           message,
           context,
+          model: activeModel,  // Send the active model
         })
       );
     },

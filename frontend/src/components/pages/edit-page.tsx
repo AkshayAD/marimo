@@ -18,7 +18,9 @@ const hideChrome = (() => {
 })();
 
 const EditPage = (props: Props) => {
-  const showAgent = props.userConfig.ai?.agent?.enabled !== false;
+  // Agent feature is enabled by default unless explicitly disabled
+  const aiConfig = props.userConfig.ai as any;
+  const showAgent = aiConfig?.agent?.enabled !== false;
 
   if (hideChrome) {
     return (

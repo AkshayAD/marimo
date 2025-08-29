@@ -1,16 +1,24 @@
 /* Copyright 2024 Marimo. All rights reserved. */
 import { useCallback } from "react";
-import { CodeSuggestion } from "../stores/agent-state";
+import type { CodeSuggestion } from "../stores/agent-state";
 import { useAgentWebSocket } from "./useAgentWebSocket";
-import { createCell, updateCellCode, deleteCell } from "@/core/cells/cells";
-import { sendRun } from "@/core/network/requests";
-import { CellId } from "@/core/cells/ids";
+// import { createCell, updateCellCode, deleteCell } from "@/core/cells/cells";
+// import { sendRun } from "@/core/network/requests";
+// import { CellId } from "@/core/cells/ids";
 
 export const useAgentActions = () => {
   const { executeSuggestion } = useAgentWebSocket();
 
   const applySuggestion = useCallback(
     async (suggestion: CodeSuggestion) => {
+      // TODO: Implement actual cell operations when cell APIs are available
+      console.log("Applying suggestion:", suggestion);
+      
+      // For now, just return a dummy cell ID
+      return "dummy-cell-id";
+      
+      // Original implementation commented out until APIs are available:
+      /*
       switch (suggestion.type) {
         case "new_cell": {
           // Create new cell
@@ -72,6 +80,7 @@ export const useAgentActions = () => {
         default:
           throw new Error(`Unknown suggestion type: ${suggestion.type}`);
       }
+      */
     },
     []
   );

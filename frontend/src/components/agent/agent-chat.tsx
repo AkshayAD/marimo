@@ -14,7 +14,7 @@ import {
   RotateCcw
 } from "lucide-react";
 import { useAgentWebSocket } from "./hooks/useAgentWebSocket";
-import { MarkdownRenderer } from "@/plugins/impl/markdown/MarkdownRenderer";
+// import { MarkdownRenderer } from "@/plugins/impl/markdown/MarkdownRenderer";
 
 export const AgentChat: React.FC = () => {
   const {
@@ -118,7 +118,8 @@ export const AgentChat: React.FC = () => {
                   : "bg-muted/50"
               )}
             >
-              <MarkdownRenderer markdown={message.content} />
+              {/* <MarkdownRenderer markdown={message.content} /> */}
+              <div className="whitespace-pre-wrap">{message.content}</div>
               
               {/* Suggestions */}
               {message.suggestions && message.suggestions.length > 0 && (
@@ -142,7 +143,8 @@ export const AgentChat: React.FC = () => {
               <Bot className="h-4 w-4" />
             </div>
             <div className="flex-1 rounded-lg p-3 bg-muted/50">
-              <MarkdownRenderer markdown={streamingMessage} />
+              {/* <MarkdownRenderer markdown={streamingMessage} /> */}
+              <div className="whitespace-pre-wrap">{streamingMessage}</div>
               <Loader2 className="h-3 w-3 animate-spin mt-2" />
             </div>
           </div>

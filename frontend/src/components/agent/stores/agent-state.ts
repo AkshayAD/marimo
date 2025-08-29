@@ -39,6 +39,7 @@ export interface AgentMessage {
 export interface AgentConfig {
   enabled: boolean;
   defaultModel: string;
+  customModel?: string | null;  // Custom model override
   autoExecute: boolean;
   requireApproval: boolean;
   maxSteps: number;
@@ -89,7 +90,8 @@ interface AgentState {
 
 const DEFAULT_CONFIG: AgentConfig = {
   enabled: true,
-  defaultModel: "openai/gpt-4",
+  defaultModel: "openai/gpt-4o",
+  customModel: null,
   autoExecute: false,
   requireApproval: true,
   maxSteps: 10,

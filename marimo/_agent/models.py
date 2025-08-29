@@ -101,7 +101,8 @@ class AgentResponse:
 class AgentConfig:
     """Configuration for the agent."""
     enabled: bool = True
-    default_model: str = "openai/gpt-4"
+    default_model: str = "openai/gpt-4o"
+    custom_model: Optional[str] = None  # Allow custom model override
     auto_execute: bool = False
     max_steps: int = 10
     require_approval: bool = True
@@ -109,3 +110,8 @@ class AgentConfig:
     max_context_cells: int = 20
     temperature: float = 0.7
     max_tokens: int = 4096
+    
+    @property
+    def active_model(self) -> str:
+        """Get the active model (custom if set, otherwise default)."""
+        return self.custom_model if self.custom_model else self.default_model

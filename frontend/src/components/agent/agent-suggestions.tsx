@@ -1,11 +1,10 @@
 /* Copyright 2024 Marimo. All rights reserved. */
 import React, { useState } from "react";
-import { CodeSuggestion } from "./stores/agent-state";
+import type { CodeSuggestion } from "./stores/agent-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import {
   Check,
-  X,
   Play,
   FileText,
   Edit,
@@ -13,8 +12,8 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import { CodeMirror } from "@/components/editor/codemirror/CodeMirror";
-import { python } from "@codemirror/lang-python";
+// import { CodeMirror } from "@/components/editor/codemirror/CodeMirror";
+// import { python } from "@codemirror/lang-python";
 import { useAgentActions } from "./hooks/useAgentActions";
 
 interface AgentSuggestionProps {
@@ -126,14 +125,17 @@ export const AgentSuggestion: React.FC<AgentSuggestionProps> = ({
       {isExpanded && suggestion.code && (
         <div className="p-2 border-t">
           <div className="rounded border bg-background overflow-hidden">
-            <CodeMirror
+            {/* <CodeMirror
               value={suggestion.code}
               extensions={[python()]}
               editable={false}
               className="text-xs"
               height="auto"
               maxHeight="200px"
-            />
+            /> */}
+            <pre className="p-2 text-xs overflow-auto max-h-[200px]">
+              <code>{suggestion.code}</code>
+            </pre>
           </div>
           
           {/* Additional Info */}
