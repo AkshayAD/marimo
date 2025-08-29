@@ -4,7 +4,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict, List, Optional
+import os
+from typing import Any, AsyncGenerator, Dict, List, Optional
 from uuid import uuid4
 
 from marimo import _loggers
@@ -30,7 +31,9 @@ from marimo._agent.prompts import (
     extract_code_from_response,
     format_conversation_for_llm,
 )
+from marimo._ai.llm._streaming import STREAMING_PROVIDERS
 from marimo._ai._types import ChatMessage, ChatModelConfig
+from marimo._agent.safety import SafetyChecker
 from marimo._dependencies.dependencies import DependencyManager
 
 LOGGER = _loggers.marimo_logger()
@@ -54,6 +57,7 @@ class AgentCore:
         self.memory = AgentMemory()
         self.executor = ExecutionContext()
         self.planner = TaskPlanner()
+        self.safety_checker = SafetyChecker(getattr(self.config, 'safety_mode', 'balanced'))
         self._model = model
         self._session_id = str(uuid4())
         
@@ -62,28 +66,44 @@ class AgentCore:
         if self._model:
             return self._model
             
-        # Import based on config
-        model_name = self.config.default_model
+        # Import based on config - use active_model property
+        model_name = self.config.active_model
         
         if model_name.startswith("openai/"):
             from marimo._ai.llm import openai
             model = model_name.replace("openai/", "")
-            return openai(model=model)
+            api_key = os.getenv("OPENAI_API_KEY")
+            base_url = os.getenv("OPENAI_BASE_URL")
+            return openai(model=model, api_key=api_key, base_url=base_url)
             
         elif model_name.startswith("anthropic/"):
             from marimo._ai.llm import anthropic
             model = model_name.replace("anthropic/", "")
-            return anthropic(model=model)
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+            base_url = os.getenv("ANTHROPIC_BASE_URL")
+            return anthropic(model=model, api_key=api_key, base_url=base_url)
             
         elif model_name.startswith("google/"):
             from marimo._ai.llm import google
             model = model_name.replace("google/", "")
-            return google(model=model)
+            api_key = os.getenv("GOOGLE_AI_API_KEY")
+            return google(model=model, api_key=api_key)
+            
+        elif model_name.startswith("groq/"):
+            from marimo._ai.llm import groq
+            model = model_name.replace("groq/", "")
+            api_key = os.getenv("GROQ_API_KEY")
+            return groq(model=model, api_key=api_key)
             
         elif model_name.startswith("bedrock/"):
             from marimo._ai.llm import bedrock
             model = model_name.replace("bedrock/", "")
-            return bedrock(model=model)
+            return bedrock(
+                model=model,
+                aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+                aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1")
+            )
             
         else:
             raise ValueError(f"Unknown model provider: {model_name}")
@@ -218,11 +238,32 @@ class AgentCore:
             
             # Extract code from response
             code = extract_code_from_response(str(response))
+            
+            # Check code safety
+            if code:
+                is_safe, warnings = self.safety_checker.check_code(code)
+                if not is_safe:
+                    LOGGER.warning(f"Generated unsafe code: {warnings}")
+                    # Add safety warnings as comments
+                    warning_comments = "\n".join([f"# SAFETY WARNING: {w}" for w in warnings])
+                    code = f"{warning_comments}\n\n{code}"
+                elif warnings:
+                    # Add warnings as comments for user awareness
+                    warning_comments = "\n".join([f"# NOTE: {w}" for w in warnings[:3]])  # Limit to first 3
+                    code = f"{warning_comments}\n\n{code}"
+            
             return code
             
         except Exception as e:
             LOGGER.error(f"Error generating code: {e}")
-            return None
+            # Try to provide helpful error message based on the error
+            error_str = str(e)
+            if "API key" in error_str or "authentication" in error_str.lower():
+                return f"# Error: Please check your API key configuration\n# {error_str}"
+            elif "rate limit" in error_str.lower():
+                return f"# Error: Rate limit exceeded, please try again later\n# {error_str}"
+            else:
+                return f"# Error generating code: {error_str}"
     
     def _determine_suggestion_type(
         self,
@@ -379,6 +420,157 @@ class AgentCore:
             "results": results,
             "summary": self.planner.get_plan_summary(),
         }
+    
+    async def stream_response(
+        self,
+        request: AgentRequest,
+    ) -> AsyncGenerator[str, None]:
+        """Stream agent response in real-time.
+        
+        Args:
+            request: User request
+            
+        Yields:
+            Chunks of the response message
+        """
+        # Add user message to memory
+        self.memory.add_message(
+            role=AgentRole.USER,
+            content=request.message,
+        )
+        
+        # Update context if provided
+        if request.context:
+            self.memory.update_notebook_context(request.context)
+        
+        # Create execution plan
+        plan = self.planner.create_plan(request.message, request.context)
+        
+        # Stream the response generation
+        async for chunk in self._stream_code_generation(request, plan):
+            yield chunk
+    
+    async def _stream_code_generation(
+        self,
+        request: AgentRequest,
+        plan: List[ExecutionStep],
+    ) -> AsyncGenerator[str, None]:
+        """Stream code generation for execution plan.
+        
+        Args:
+            request: User request
+            plan: Execution plan
+            
+        Yields:
+            Chunks of generated response
+        """
+        if not plan:
+            yield "I couldn't create a plan for your request. Could you provide more details?"
+            return
+            
+        # Get model information for streaming
+        model_name = self.config.active_model
+        provider = model_name.split("/")[0]
+        model = model_name.split("/", 1)[1] if "/" in model_name else model_name
+        
+        if provider not in STREAMING_PROVIDERS:
+            # Fallback to non-streaming for unsupported providers
+            response = await self.process_request(request)
+            yield response.message
+            return
+            
+        # Build streaming prompt
+        step = plan[0]  # For now, stream the first step
+        if "modify" in step.description.lower():
+            if request.context and request.context.active_cell_id:
+                current_code = request.context.cell_codes.get(
+                    request.context.active_cell_id, ""
+                )
+                prompt = build_modification_prompt(request.message, current_code)
+            else:
+                prompt = build_code_generation_prompt(request.message, request.context)
+        else:
+            prompt = build_code_generation_prompt(request.message, request.context)
+            
+        # Get API credentials
+        api_key = self._get_api_key_for_provider(provider)
+        base_url = self._get_base_url_for_provider(provider)
+        
+        # Create chat messages
+        messages = [
+            ChatMessage(role="user", content=prompt)
+        ]
+        
+        config = ChatModelConfig(
+            max_tokens=self.config.max_tokens,
+            temperature=self.config.temperature,
+        )
+        
+        # Stream the response
+        stream_func = STREAMING_PROVIDERS[provider]
+        try:
+            async for chunk in stream_func(
+                messages=messages,
+                config=config,
+                model=model,
+                system_message=SYSTEM_PROMPT,
+                api_key=api_key,
+                base_url=base_url,
+            ):
+                yield chunk
+        except Exception as e:
+            LOGGER.error(f"Error streaming response: {e}")
+            yield f"\n\nError generating response: {str(e)}"
+    
+    def _get_api_key_for_provider(self, provider: str) -> str:
+        """Get API key for a specific provider."""
+        key_map = {
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY", 
+            "google": "GOOGLE_AI_API_KEY",
+            "groq": "GROQ_API_KEY",
+        }
+        
+        env_var = key_map.get(provider)
+        if not env_var:
+            raise ValueError(f"No API key environment variable defined for provider: {provider}")
+            
+        api_key = os.getenv(env_var)
+        if not api_key:
+            raise ValueError(f"API key not found in environment variable: {env_var}")
+            
+        return api_key
+    
+    def _get_base_url_for_provider(self, provider: str) -> Optional[str]:
+        """Get base URL for a specific provider."""
+        url_map = {
+            "openai": "OPENAI_BASE_URL",
+            "anthropic": "ANTHROPIC_BASE_URL",
+        }
+        
+        env_var = url_map.get(provider)
+        return os.getenv(env_var) if env_var else None
+
+    @classmethod
+    def from_env(cls, **overrides) -> "AgentCore":
+        """Create AgentCore with configuration from environment variables.
+        
+        Args:
+            **overrides: Override specific config values
+            
+        Returns:
+            Configured AgentCore instance
+        """
+        config = AgentConfig(
+            enabled=os.getenv("MARIMO_AGENT_ENABLED", "true").lower() == "true",
+            default_model=os.getenv("MARIMO_AGENT_DEFAULT_MODEL", "openai/gpt-4o"),
+            auto_execute=os.getenv("MARIMO_AGENT_AUTO_EXECUTE", "false").lower() == "true",
+            require_approval=os.getenv("MARIMO_AGENT_REQUIRE_APPROVAL", "true").lower() == "true",
+            max_steps=int(os.getenv("MARIMO_AGENT_MAX_STEPS", "10")),
+            stream_responses=os.getenv("MARIMO_AGENT_STREAM_RESPONSES", "true").lower() == "true",
+            **overrides
+        )
+        return cls(config=config)
     
     def clear_memory(self) -> None:
         """Clear agent memory and conversation history."""

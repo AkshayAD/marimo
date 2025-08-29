@@ -10,15 +10,20 @@ import { useAtomValue } from "jotai";
 export const useAgentWebSocket = () => {
   const ws = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
+  const pingInterval = useRef<NodeJS.Timeout | null>(null);
   
   const {
+    config,
     setWsConnected,
+    setWsError,
     setSessionId,
     addMessage,
+    updateMessage,
     setStreamingMessage,
     setLoading,
     setPlan,
     updateStepStatus,
+    updatePingTime,
   } = useAgentStore();
 
   const variables = useAtomValue(variablesAtom);
@@ -37,6 +42,7 @@ export const useAgentWebSocket = () => {
     ws.current.onopen = () => {
       console.log("Agent WebSocket connected");
       setWsConnected(true);
+      setWsError(null);
       
       // Initialize session
       ws.current?.send(
@@ -45,6 +51,14 @@ export const useAgentWebSocket = () => {
           config: useAgentStore.getState().config,
         })
       );
+      
+      // Start ping interval
+      pingInterval.current = setInterval(() => {
+        if (ws.current?.readyState === WebSocket.OPEN) {
+          ws.current.send(JSON.stringify({ type: "ping" }));
+          updatePingTime();
+        }
+      }, 30000); // Ping every 30 seconds
     };
 
     ws.current.onmessage = (event) => {
@@ -58,17 +72,26 @@ export const useAgentWebSocket = () => {
 
     ws.current.onerror = (error) => {
       console.error("Agent WebSocket error:", error);
+      setWsError("Connection error");
     };
 
-    ws.current.onclose = () => {
-      console.log("Agent WebSocket disconnected");
+    ws.current.onclose = (event) => {
+      console.log("Agent WebSocket disconnected:", event.code, event.reason);
       setWsConnected(false);
       ws.current = null;
       
-      // Attempt to reconnect after 3 seconds
-      reconnectTimeout.current = setTimeout(() => {
-        connect();
-      }, 3000);
+      if (pingInterval.current) {
+        clearInterval(pingInterval.current);
+        pingInterval.current = null;
+      }
+      
+      // Auto-reconnect unless it was a clean close
+      if (event.code !== 1000) {
+        setWsError(`Connection closed: ${event.reason || 'Unknown reason'}`);
+        reconnectTimeout.current = setTimeout(() => {
+          connect();
+        }, 3000);
+      }
     };
   }, [setWsConnected, setSessionId]);
 
@@ -77,6 +100,26 @@ export const useAgentWebSocket = () => {
       switch (data.type) {
         case "init_complete":
           setSessionId(data.session_id);
+          break;
+          
+        case "stream_chunk":
+          setStreamingMessage(data.accumulated, data.message_id);
+          break;
+          
+        case "stream_complete":
+          // Finalize the streaming message
+          if (data.message_id) {
+            updateMessage(data.message_id, {
+              content: data.final_message,
+            });
+          } else {
+            addMessage({
+              role: "assistant",
+              content: data.final_message,
+            });
+          }
+          setStreamingMessage(null);
+          setLoading(false);
           break;
           
         case "response":
@@ -92,21 +135,18 @@ export const useAgentWebSocket = () => {
           }
           break;
           
-        case "streaming":
-          setStreamingMessage(data.content);
-          break;
-          
         case "execution_result":
-          if (data.result.status === "success") {
+          if (data.result?.status === "success") {
             updateStepStatus(data.step_id, "complete", data.result);
           } else {
-            updateStepStatus(data.step_id, "error", null, data.result.error);
+            updateStepStatus(data.step_id, "error", null, data.result?.error);
           }
           break;
           
         case "error":
           setLoading(false);
           setStreamingMessage(null);
+          setWsError(data.message);
           addMessage({
             role: "assistant",
             content: `Error: ${data.message}`,
@@ -116,15 +156,22 @@ export const useAgentWebSocket = () => {
         case "cleared":
           // Memory cleared successfully
           break;
+          
+        case "pong":
+          updatePingTime();
+          break;
       }
     },
     [
       setSessionId,
       setLoading,
       setStreamingMessage,
+      updateMessage,
       addMessage,
       setPlan,
       updateStepStatus,
+      setWsError,
+      updatePingTime,
     ]
   );
 
@@ -156,12 +203,25 @@ export const useAgentWebSocket = () => {
         execution_history: [], // TODO: Track execution history
       };
 
+      // Add user message immediately
+      addMessage({
+        role: "user",
+        content: message,
+      });
+      
+      // Set loading and streaming states
+      setLoading(true);
+      if (config.streamResponses) {
+        setStreamingMessage("");
+      }
+      
       ws.current.send(
         JSON.stringify({
           type: "chat",
           message,
           context,
-          model: activeModel,  // Send the active model
+          model: activeModel,
+          stream: config.streamResponses,
         })
       );
     },
@@ -208,10 +268,31 @@ export const useAgentWebSocket = () => {
       }
     };
   }, [connect]);
+  
+  const disconnect = useCallback(() => {
+    if (reconnectTimeout.current) {
+      clearTimeout(reconnectTimeout.current);
+      reconnectTimeout.current = null;
+    }
+    
+    if (pingInterval.current) {
+      clearInterval(pingInterval.current);
+      pingInterval.current = null;
+    }
+    
+    if (ws.current) {
+      ws.current.close(1000, "Manual disconnect");
+      ws.current = null;
+    }
+    
+    setWsConnected(false);
+  }, [setWsConnected]);
 
   return {
     sendMessage,
     executeSuggestion,
     clearMemory,
+    connect,
+    disconnect,
   };
 };

@@ -34,6 +34,11 @@ export const AgentPanel: React.FC = () => {
   // Get active model for display
   const activeModel = config.customModel || config.defaultModel;
   const modelDisplay = activeModel.split('/').pop()?.split('-').slice(0, 2).join('-') || 'Unknown';
+  
+  // Show connection status with more detail
+  const connectionStatus = wsConnected ? 
+    `Connected (${modelDisplay})` : 
+    'Disconnected';
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -117,11 +122,12 @@ export const AgentPanel: React.FC = () => {
             <div className="flex items-center gap-2">
               <Bot className="h-4 w-4" />
               <span className="font-semibold text-sm">AI Agent</span>
-              {wsConnected ? (
-                <span className="text-xs text-muted-foreground">({modelDisplay})</span>
-              ) : (
-                <span className="text-xs text-muted-foreground">(Offline)</span>
-              )}
+              <span className={cn(
+                "text-xs",
+                wsConnected ? "text-green-600" : "text-red-500"
+              )}>
+                {connectionStatus}
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <Button

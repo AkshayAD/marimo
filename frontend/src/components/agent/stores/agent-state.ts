@@ -44,6 +44,9 @@ export interface AgentConfig {
   requireApproval: boolean;
   maxSteps: number;
   streamResponses: boolean;
+  maxTokens: number;
+  temperature: number;
+  safetyMode: "strict" | "balanced" | "permissive";
 }
 
 interface AgentState {
@@ -56,17 +59,22 @@ interface AgentState {
   messages: AgentMessage[];
   isLoading: boolean;
   streamingMessage: string | null;
+  streamingMessageId: string | null;
   
   // Execution State
   currentPlan: ExecutionStep[];
   executingStepId: string | null;
+  pendingSuggestions: CodeSuggestion[];
   
   // Configuration
   config: AgentConfig;
+  availableModels: string[];
   
   // WebSocket
   wsConnected: boolean;
+  wsError: string | null;
   sessionId: string | null;
+  lastPingTime: number | null;
   
   // Actions
   toggleOpen: () => void;
@@ -74,18 +82,25 @@ interface AgentState {
   toggleMinimized: () => void;
   
   addMessage: (message: Omit<AgentMessage, "id" | "timestamp">) => void;
+  updateMessage: (id: string, updates: Partial<AgentMessage>) => void;
   clearMessages: () => void;
   setLoading: (loading: boolean) => void;
-  setStreamingMessage: (message: string | null) => void;
+  setStreamingMessage: (message: string | null, messageId?: string | null) => void;
   
   setPlan: (plan: ExecutionStep[]) => void;
   updateStepStatus: (stepId: string, status: ExecutionStatus, result?: any, error?: string) => void;
   setExecutingStep: (stepId: string | null) => void;
+  addSuggestion: (suggestion: CodeSuggestion) => void;
+  removeSuggestion: (id: string) => void;
+  clearSuggestions: () => void;
   
   updateConfig: (config: Partial<AgentConfig>) => void;
+  setAvailableModels: (models: string[]) => void;
   
   setWsConnected: (connected: boolean) => void;
+  setWsError: (error: string | null) => void;
   setSessionId: (sessionId: string | null) => void;
+  updatePingTime: () => void;
 }
 
 const DEFAULT_CONFIG: AgentConfig = {
@@ -96,6 +111,9 @@ const DEFAULT_CONFIG: AgentConfig = {
   requireApproval: true,
   maxSteps: 10,
   streamResponses: true,
+  maxTokens: 4096,
+  temperature: 0.7,
+  safetyMode: "balanced",
 };
 
 export const useAgentStore = create<AgentState>()(
@@ -111,17 +129,30 @@ export const useAgentStore = create<AgentState>()(
         messages: [],
         isLoading: false,
         streamingMessage: null,
+        streamingMessageId: null,
         
         // Execution State - not persisted
         currentPlan: [],
         executingStepId: null,
+        pendingSuggestions: [],
         
         // Configuration - persisted
         config: DEFAULT_CONFIG,
+        availableModels: [
+          "openai/gpt-4o",
+          "openai/gpt-4o-mini",
+          "openai/gpt-3.5-turbo",
+          "anthropic/claude-3-5-sonnet-20241022",
+          "anthropic/claude-3-haiku-20240307",
+          "google/gemini-1.5-pro",
+          "groq/llama-3.1-70b-versatile",
+        ],
         
         // WebSocket - not persisted
         wsConnected: false,
+        wsError: null,
         sessionId: null,
+        lastPingTime: null,
         
         // Actions
         toggleOpen: () => set((state) => ({ isOpen: !state.isOpen })),
@@ -139,9 +170,16 @@ export const useAgentStore = create<AgentState>()(
           ],
         })),
         
-        clearMessages: () => set({ messages: [] }),
+        updateMessage: (id, updates) => set((state) => ({
+          messages: state.messages.map((msg) =>
+            msg.id === id ? { ...msg, ...updates } : msg
+          ),
+        })),
+        
+        clearMessages: () => set({ messages: [], streamingMessage: null, streamingMessageId: null }),
         setLoading: (isLoading) => set({ isLoading }),
-        setStreamingMessage: (streamingMessage) => set({ streamingMessage }),
+        setStreamingMessage: (streamingMessage, streamingMessageId = null) => 
+          set({ streamingMessage, streamingMessageId }),
         
         setPlan: (currentPlan) => set({ currentPlan }),
         updateStepStatus: (stepId, status, result, error) =>
@@ -154,13 +192,24 @@ export const useAgentStore = create<AgentState>()(
           })),
         setExecutingStep: (executingStepId) => set({ executingStepId }),
         
+        addSuggestion: (suggestion) => set((state) => ({
+          pendingSuggestions: [...state.pendingSuggestions, suggestion],
+        })),
+        removeSuggestion: (id) => set((state) => ({
+          pendingSuggestions: state.pendingSuggestions.filter((s) => s.id !== id),
+        })),
+        clearSuggestions: () => set({ pendingSuggestions: [] }),
+        
         updateConfig: (config) =>
           set((state) => ({
             config: { ...state.config, ...config },
           })),
+        setAvailableModels: (availableModels) => set({ availableModels }),
         
-        setWsConnected: (wsConnected) => set({ wsConnected }),
+        setWsConnected: (wsConnected) => set({ wsConnected, wsError: wsConnected ? null : undefined }),
+        setWsError: (wsError) => set({ wsError }),
         setSessionId: (sessionId) => set({ sessionId }),
+        updatePingTime: () => set({ lastPingTime: Date.now() }),
       }),
       {
         name: "marimo-agent-storage",

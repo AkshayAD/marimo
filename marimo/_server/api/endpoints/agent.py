@@ -56,7 +56,15 @@ def get_or_create_agent(session_id: str, config: Optional[AgentConfig] = None) -
         Agent instance
     """
     if session_id not in AGENT_SESSIONS:
-        AGENT_SESSIONS[session_id] = AgentCore(config=config)
+        # If no config provided, try to create from environment
+        if config is None:
+            try:
+                AGENT_SESSIONS[session_id] = AgentCore.from_env()
+            except Exception:
+                # Fallback to default config
+                AGENT_SESSIONS[session_id] = AgentCore(config=AgentConfig())
+        else:
+            AGENT_SESSIONS[session_id] = AgentCore(config=config)
     return AGENT_SESSIONS[session_id]
 
 
@@ -316,17 +324,34 @@ async def agent_stream_ws(websocket: WebSocket) -> None:
                 
                 # Process and stream response
                 try:
-                    # For now, send complete response
-                    # In future, implement streaming from LLM
-                    response = await agent.process_request(agent_request)
-                    
-                    await websocket.send_json({
-                        "type": "response",
-                        "message": response.message,
-                        "suggestions": [s.__dict__ for s in response.suggestions],
-                        "execution_plan": [s.__dict__ for s in response.execution_plan],
-                        "requires_approval": response.requires_approval,
-                    })
+                    # Check if streaming is enabled and supported
+                    if agent.config.stream_responses and agent_request.stream:
+                        # Send streaming chunks
+                        accumulated_text = ""
+                        async for chunk in agent.stream_response(agent_request):
+                            accumulated_text += chunk
+                            await websocket.send_json({
+                                "type": "stream_chunk",
+                                "chunk": chunk,
+                                "accumulated": accumulated_text,
+                            })
+                        
+                        # Send completion message
+                        await websocket.send_json({
+                            "type": "stream_complete",
+                            "final_message": accumulated_text,
+                        })
+                    else:
+                        # Send complete response
+                        response = await agent.process_request(agent_request)
+                        
+                        await websocket.send_json({
+                            "type": "response",
+                            "message": response.message,
+                            "suggestions": [s.__dict__ for s in response.suggestions],
+                            "execution_plan": [s.__dict__ for s in response.execution_plan],
+                            "requires_approval": response.requires_approval,
+                        })
                     
                 except Exception as e:
                     await websocket.send_json({
