@@ -176,6 +176,17 @@ export const UserConfigSchema = z
           displayed_models: [],
           custom_models: [],
         }),
+        agent: z
+          .object({
+            enabled: z.boolean().default(true),
+            default_model: z.string().default("google/gemini-2.0-flash-exp"),
+            custom_model: z.string().optional(),
+            auto_execute: z.boolean().default(false),
+            require_approval: z.boolean().default(true),
+            max_steps: z.number().default(10),
+          })
+          .passthrough()
+          .default({}),
       })
       .passthrough()
       .default({}),
@@ -213,6 +224,13 @@ export const UserConfigSchema = z
       mode: "manual",
       open_ai: {},
       models: {},
+      agent: {
+        enabled: true,
+        default_model: "google/gemini-2.0-flash-exp",
+        auto_execute: false,
+        require_approval: true,
+        max_steps: 10,
+      },
     },
   });
 export type UserConfig = MarimoConfig;

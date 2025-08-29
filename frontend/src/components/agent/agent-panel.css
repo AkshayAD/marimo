@@ -1,0 +1,140 @@
+/* Copyright 2024 Marimo. All rights reserved. */
+
+/* Adjust main app width when agent panel is open */
+body.agent-panel-open {
+  --main-content-max-width: calc(100vw - var(--agent-panel-width, 400px));
+}
+
+body.agent-panel-open .app-container {
+  margin-right: var(--agent-panel-width, 400px);
+  transition: margin-right 0.3s ease-in-out;
+}
+
+/* Agent Panel Styles */
+.agent-panel {
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.agent-panel-resizer {
+  position: absolute;
+  left: -2px;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  cursor: ew-resize;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.agent-panel-resizer:hover,
+.agent-panel-resizer.resizing {
+  background: var(--primary);
+  opacity: 0.5;
+}
+
+/* Chat Styles */
+.agent-chat-message {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.agent-chat-message.user {
+  align-self: flex-end;
+  max-width: 80%;
+}
+
+.agent-chat-message.assistant {
+  align-self: flex-start;
+  max-width: 90%;
+}
+
+/* Suggestion Card Styles */
+.agent-suggestion-card {
+  transition: all 0.2s ease;
+}
+
+.agent-suggestion-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.agent-suggestion-card.applied {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Progress Styles */
+.agent-progress-step {
+  transition: all 0.2s ease;
+}
+
+.agent-progress-step.executing {
+  background: var(--primary-foreground);
+  border-left: 3px solid var(--primary);
+}
+
+.agent-progress-step.complete {
+  opacity: 0.7;
+}
+
+.agent-progress-step.error {
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid rgb(239, 68, 68);
+}
+
+/* Controls Styles */
+.agent-controls {
+  background: var(--background);
+  border-top: 1px solid var(--border);
+}
+
+/* Scrollbar Styles */
+.agent-panel .scrollarea-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+
+.agent-panel .scrollarea-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.agent-panel .scrollarea-viewport::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 3px;
+  opacity: 0.5;
+}
+
+.agent-panel .scrollarea-viewport::-webkit-scrollbar-thumb:hover {
+  opacity: 0.7;
+}
+
+/* Dark Mode Adjustments */
+@media (prefers-color-scheme: dark) {
+  .agent-panel {
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .agent-suggestion-card:hover {
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .agent-panel {
+    width: 100% !important;
+    max-width: none;
+  }
+  
+  body.agent-panel-open .app-container {
+    display: none;
+  }
+}
